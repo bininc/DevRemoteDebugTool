@@ -1,0 +1,42 @@
+﻿<Window
+    x:Class="WpfAutoUpdate.RealTimeData"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="在线维护"
+    Width="600"
+    Height="400"
+    WindowStartupLocation="CenterOwner">
+    <Grid>
+        <TextBox
+            Name="txtRec"
+            Margin="0,0,0,51"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            Background="Black"
+            FontFamily="simsun"
+            FontSize="13"
+            Foreground="Cyan"
+            TextWrapping="Wrap"
+            VerticalScrollBarVisibility="Visible" />
+        <TextBox
+            Name="txtSend"
+            Height="50"
+            Margin="0,0,60,0"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Bottom"
+            FontFamily="simsun"
+            FontSize="12" />
+        <Button
+            Name="btnSend"
+            Width="60"
+            Height="50"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Bottom"
+            Click="BtnSend_OnClick"
+            Content="发送"
+            IsDefault="True" />
+        <Button Name="btnPause" Width="60" Height="20" Content="暂停滚屏" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,20,54" Click="btnPause_Click"/>
+        <Button Name="btnSetMode" Width="60" Height="20" Content="设置模式" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,81,54" Click="btnSetMode_Click"/>
+    </Grid>
+
+</Window>

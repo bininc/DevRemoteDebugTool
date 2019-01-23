@@ -1,0 +1,43 @@
+﻿<Window x:Class="WpfAutoUpdate.SetParameters"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="设置参数" Height="350" Width="450" ResizeMode="NoResize">
+    <Grid Background="#F0F0F0">
+        <CheckBox Name="chkApn" Content="接入点" HorizontalAlignment="Left" Height="16" Margin="20,15,0,0" VerticalAlignment="Top" VerticalContentAlignment="Top"/>
+        <TextBox Name="txtApn" HorizontalAlignment="Left" Height="23" Margin="105,10,0,0" TextWrapping="Wrap" Text="cmnet" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+        <CheckBox Name="chkServerIP" Content="服务器IP" HorizontalAlignment="Left" Height="16" Margin="20,43,0,0" VerticalAlignment="Top" VerticalContentAlignment="Center"/>
+        <TextBox Name="txtServerIP" HorizontalAlignment="Left" Height="23" Margin="105,38,0,0" TextWrapping="Wrap" Text="124.193.217.106" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+        <CheckBox Name="chkServerPort" Content="服务器端口" HorizontalAlignment="Left" Height="16" Margin="20,71,0,0" VerticalAlignment="Top" VerticalContentAlignment="Center"/>
+        <TextBox Name="txtServerPort" HorizontalAlignment="Left" Height="23" Margin="105,66,0,0" TextWrapping="Wrap" Text="7920" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+        <CheckBox Name="chkMac" Content="终端识别码" HorizontalAlignment="Left" Height="16" Margin="20,99,0,0" VerticalAlignment="Top" IsChecked="True" IsEnabled="False" VerticalContentAlignment="Center" Checked="ChkMac_OnChecked"/>
+        <TextBox Name="txtMac" HorizontalAlignment="Left" Height="23" Margin="105,94,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+        <CheckBox Name="chkSuperPhone" Content="超级号码" HorizontalAlignment="Left" Height="16" Margin="20,127,0,0" VerticalAlignment="Top" VerticalContentAlignment="Center"/>
+        <TextBox Name="txtSuperPhone1" HorizontalAlignment="Left" Height="23" Margin="105,122,0,0" TextWrapping="Wrap" Text="1064899150018" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+        <TextBox Name="txtSuperPhone2" HorizontalAlignment="Left" Height="23" Margin="105,150,0,0" TextWrapping="Wrap" Text="13910822968" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+        <TextBox Name="txtSuperPhone3" HorizontalAlignment="Left" Height="23" Margin="105,178,0,0" TextWrapping="Wrap" Text="15810378470" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+        <TextBox Name="txtSuperPhone4" HorizontalAlignment="Left" Height="23" Margin="105,206,0,0" TextWrapping="Wrap" Text="15711093163" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center"/>
+        
+        <Label Content="设置说明：只会设置已经勾选的参数项" VerticalContentAlignment="Center" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="20,235,0,0" Foreground="Red"></Label>
+
+        <TextBox Name="txtApn_R" HorizontalAlignment="Left" Height="23" Margin="255,10,0,0" TextWrapping="Wrap" Text="{Binding Path=apn}" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center" IsReadOnly="True"/>
+        <Label Content="(当前值)" Height="23" Margin="375,10,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" VerticalContentAlignment="Center" Foreground="Blue" Padding="0"/>
+        <TextBox Name="txtServerIP_R" HorizontalAlignment="Left" Height="23" Margin="255,38,0,0" TextWrapping="Wrap" Text="{Binding Path=serverIP1}" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center" IsReadOnly="True"/>
+        <Label Content="(当前值)" Height="23" Margin="375,38,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" VerticalContentAlignment="Center" Foreground="Blue" Padding="0"></Label>
+        <TextBox Name="txtServerPort_R" HorizontalAlignment="Left" Height="23" Margin="255,66,0,0" TextWrapping="Wrap" Text="{Binding Path=serverPort1}" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center" IsReadOnly="True"/>
+        <Label Content="(当前值)" Height="23" Margin="375,66,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" VerticalContentAlignment="Center" Foreground="Blue" Padding="0"></Label>
+        <TextBox Name="txtMac_R" HorizontalAlignment="Left" Height="23" Margin="255,94,0,0" TextWrapping="Wrap" Text="{Binding Path=mac}" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center" IsReadOnly="True"/>
+        <Label Content="(当前值)" Height="23" Margin="375,94,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" VerticalContentAlignment="Center" Foreground="Blue" Padding="0"></Label>
+        <TextBox Name="txtSuperPhone1_R" HorizontalAlignment="Left" Height="23" Margin="255,122,0,0" TextWrapping="Wrap" Text="{Binding Path=superPhone1}" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center" IsReadOnly="True"/>
+        <Label Content="(当前值)" Height="23" Margin="375,122,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" VerticalContentAlignment="Center" Foreground="Blue" Padding="0"></Label>
+        <TextBox Name="txtSuperPhone2_R" HorizontalAlignment="Left" Height="23" Margin="255,150,0,0" TextWrapping="Wrap" Text="{Binding Path=superPhone2}" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center" IsReadOnly="True"/>
+        <Label Content="(当前值)" Height="23" Margin="375,150,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" VerticalContentAlignment="Center" Foreground="Blue" Padding="0"></Label>
+        <TextBox Name="txtSuperPhone3_R" HorizontalAlignment="Left" Height="23" Margin="255,178,0,0" TextWrapping="Wrap" Text="{Binding Path=superPhone3}" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center" IsReadOnly="True"/>
+        <Label Content="(当前值)" Height="23" Margin="375,178,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" VerticalContentAlignment="Center" Foreground="Blue" Padding="0"></Label>
+        <TextBox Name="txtSuperPhone4_R" HorizontalAlignment="Left" Height="23" Margin="255,206,0,0" TextWrapping="Wrap" Text="{Binding Path=superPhone4}" VerticalAlignment="Top" Width="120" VerticalContentAlignment="Center" IsReadOnly="True"/>
+        <Label Content="(当前值)" Height="23" Margin="375,206,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" VerticalContentAlignment="Center" Foreground="Blue" Padding="0"></Label>
+        
+        <Button VerticalAlignment="Top" HorizontalAlignment="Left" Content="设置" Width="75" Height="23" Margin="90,280,0,0" Click="ButtonSet_OnClick"/>
+        <Button VerticalAlignment="Top" HorizontalAlignment="Left" Content="取消" Width="75" Height="23" Margin="280,280,0,0" Click="ButtonCancel_OnClick"/>
+        <Button VerticalAlignment="Top" HorizontalAlignment="Left" Content="读取" Width="75" Height="23" Margin="280,237,0,0" Click="ButtonRead_OnClick" Foreground="Blue"/>
+    </Grid>
+</Window>

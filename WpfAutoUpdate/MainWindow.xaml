@@ -1,0 +1,330 @@
+﻿<Window
+    x:Class="WpfAutoUpdate.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="车载终端远程诊断工具"
+    Width="1105"
+    Height="520"
+    Closed="Window_Closed"
+    Icon="s18.ico"
+    WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="108" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TabControl Grid.Row="0">
+            <TabItem Header="远程诊断">
+                <Grid Margin="0,1,0,0">
+                    <Label
+                        Margin="33,0,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Content="服务器IP：" />
+                    <TextBox
+                        x:Name="txtServerIP"
+                        Width="155"
+                        Height="23"
+                        Margin="96,0,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        VerticalContentAlignment="Center"
+                        IsReadOnly="False"
+                        Text="默认自动获取公网地址"
+                        TextWrapping="NoWrap" />
+                    <Label
+                        Margin="255,0,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Content="远程诊断端口：" />
+                    <TextBox
+                        x:Name="txtServerPort"
+                        Width="55"
+                        Height="23"
+                        Margin="345,0,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        VerticalContentAlignment="Center"
+                        IsReadOnly="False"
+                        Text="10000"
+                        TextWrapping="NoWrap" />
+                    <Label
+                        Margin="33,26,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Content="短信指令：" />
+                    <TextBox
+                        x:Name="txtSendSMS"
+                        Width="304"
+                        Height="23"
+                        Margin="96,26,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        VerticalContentAlignment="Center"
+                        IsReadOnly="True"
+                        Text="服务启动后自动生成短信串" />
+                    <Button
+                        x:Name="btnStart"
+                        Width="75"
+                        Height="49"
+                        Margin="415,0,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Content="启动服务" />
+                    <Label
+                        Height="23"
+                        Margin="33,52,0,0"
+                        Padding="0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        VerticalContentAlignment="Center"
+                        Content="使用说明：向车机发送升级指令（短信）后，车机会自动连接到下面列表，弹出右键菜单可进行更多操作"
+                        FontSize="12"
+                        Foreground="DodgerBlue" />
+                    <TextBlock
+                        Width="100"
+                        Margin="680,15,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Foreground="Red"
+                        Text="注意：需要先打开远程诊断才能进行远程升级"
+                        TextWrapping="Wrap" />
+                </Grid>
+            </TabItem>
+            <TabItem Header="远程升级">
+                <Grid Margin="0,1,0,0">
+                    <Label
+                        Margin="10,0,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Content="选择升级固件：" />
+                    <TextBox
+                        x:Name="txtUpdateFilePath"
+                        Width="436"
+                        Height="23"
+                        Margin="98,0,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        VerticalContentAlignment="Center"
+                        IsReadOnly="True"
+                        Text="点击右侧浏览按钮选择文件"
+                        TextWrapping="NoWrap" />
+                    <Button
+                        x:Name="btnSelectUpdateFile"
+                        Width="80"
+                        Height="23"
+                        Margin="540,0,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Content="浏览" />
+                    <Label
+                        Margin="21,26,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Content="升级识别码：" />
+                    <TextBox
+                        x:Name="txtUpdateCarMac"
+                        Width="436"
+                        Height="23"
+                        Margin="98,26,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        VerticalContentAlignment="Center"
+                        IsReadOnly="False"
+                        Text="请输入识别码(若有多个请用;号分割)"
+                        TextWrapping="NoWrap" />
+                    <Button
+                        x:Name="btnSelectUpdateCarFile"
+                        Width="80"
+                        Height="23"
+                        Margin="540,26,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Content="导入批量模板" />
+                    <Button
+                        x:Name="btnDownExcel"
+                        Width="75"
+                        Height="23"
+                        Margin="625,26,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Content="下载模板"
+                        ToolTip="点击下载批量模板" />
+                    <TextBox
+                        x:Name="txtSMS"
+                        Width="557"
+                        Height="23"
+                        Margin="15,52,0,0"
+                        Padding="0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        VerticalContentAlignment="Center"
+                        IsReadOnly="True"
+                        TextWrapping="NoWrap" />
+                    <Label
+                        Height="23"
+                        Margin="578,52,0,0"
+                        Padding="0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        VerticalContentAlignment="Center"
+                        Content="升级端口："
+                        FontSize="12" />
+                    <TextBox
+                        x:Name="txtUpdatePort"
+                        Width="55"
+                        Height="23"
+                        Margin="645,52,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        VerticalContentAlignment="Center"
+                        IsReadOnly="False"
+                        Text="4518"
+                        TextWrapping="NoWrap" />
+                    <Button
+                        x:Name="btnStartUpdate"
+                        Width="75"
+                        Height="49"
+                        Margin="715,0,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Content="启动升级" />
+                    <CheckBox
+                        x:Name="chkAutoClose"
+                        Width="75"
+                        Height="16"
+                        Margin="715,57,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        VerticalContentAlignment="Top"
+                        Content="自动断开"
+                        ToolTip="升级完成后自动关闭远程调试" />
+                    <Button
+                        x:Name="btnFOTA_TOOL"
+                        Width="75"
+                        Height="23"
+                        Margin="625,0,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Content="加壳工具" />
+                    <RadioButton
+                        x:Name="rb2g"
+                        Margin="810,8,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Content="2G设备"
+                        GroupName="devType"
+                        IsChecked="True" />
+                    <RadioButton
+                        x:Name="rb4g"
+                        Margin="810,28,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Content="4G设备"
+                        GroupName="devType"
+                        IsChecked="False" />
+                </Grid>
+            </TabItem>
+        </TabControl>
+        <DataGrid
+            Name="dgUpdate"
+            Grid.Row="1"
+            AutoGenerateColumns="False"
+            BorderThickness="1,0,1,1"
+            IsReadOnly="True"
+            SelectionMode="Single">
+            <DataGrid.ColumnHeaderStyle>
+                <Style TargetType="DataGridColumnHeader">
+                    <Setter Property="HorizontalContentAlignment" Value="Center" />
+                </Style>
+            </DataGrid.ColumnHeaderStyle>
+            <DataGrid.Columns>
+                <DataGridTextColumn Binding="{Binding ip_port}" Header="IP地址" />
+                <DataGridTextColumn Binding="{Binding mac}" Header="识别码" />
+                <DataGridTextColumn Binding="{Binding apn}" Header="接入点" />
+                <DataGridTextColumn Binding="{Binding serverIP1}" Header="服务器IP" />
+                <DataGridTextColumn Binding="{Binding serverPort1}" Header="端口号" />
+                <DataGridTextColumn Binding="{Binding hwVer}" Header="硬件版本" />
+                <DataGridTextColumn Binding="{Binding swVer}" Header="软件版本" />
+                <DataGridTextColumn Binding="{Binding update}" Header="升级" />
+                <DataGridTextColumn Binding="{Binding oldver}" Header="原版本" />
+                <DataGridTextColumn Binding="{Binding ver}" Header="当前版本" />
+                <DataGridTextColumn Binding="{Binding updatever}" Header="目标版本" />
+                <DataGridTextColumn Binding="{Binding time}" Header="完成时间" />
+                <DataGridTextColumn Binding="{Binding down}" Header="进度" />
+                <DataGridTextColumn Binding="{Binding status}" Header="状态" />
+                <!--<DataGridTextColumn Header="版本特征" Binding="{Binding features}"/>-->
+            </DataGrid.Columns>
+            <DataGrid.ContextMenu>
+                <ContextMenu>
+                    <MenuItem
+                        Name="MenuItemViewRealData"
+                        Click="MenuItemViewRealData_OnClick"
+                        Header="在线维护" />
+                    <MenuItem
+                        Name="MenuItemFeatures"
+                        Click="MenuItemFeatures_OnClick"
+                        Header="查看版本特征"
+                        IsEnabled="True" />
+                    <MenuItem
+                        Name="MenuItemParameters"
+                        Click="MenuItemParameters_OnClick"
+                        Header="查看配置信息"
+                        IsEnabled="True" />
+                    <MenuItem
+                        Name="MenuItemDynamicParameters"
+                        Click="MenuItemDynamicParameters_OnClick"
+                        Header="查看动态参数" />
+                    <Separator />
+                    <MenuItem
+                        Name="MenuItemReadParameters"
+                        Click="MenuItemReadParameters_OnClick"
+                        Header="读取配置信息" />
+                    <MenuItem
+                        Name="MenuItemReadDynamicParameters"
+                        Click="MenuItemReadDynamicParameters_OnClick"
+                        Header="读取动态参数" />
+                    <Separator />
+                    <MenuItem
+                        Name="MenuItemSetParameters"
+                        Click="MenuItemSetParameters_OnClick"
+                        Header="设置配置参数" />
+                    <Separator />
+                    <MenuItem
+                        Name="MenuItemStartUpdate"
+                        Click="MenuItemStartUpdate_OnClick"
+                        Header="开始升级"
+                        IsEnabled="False" />
+                    <MenuItem
+                        Name="MenuItemForceUpdate"
+                        Click="MenuItemForceUpdate_OnClick"
+                        Header="强制升级"
+                        IsEnabled="False" />
+                    <MenuItem
+                        Name="MenuItemPauseUpdate"
+                        Click="MenuItemPauseUpdate_OnClick"
+                        Header="暂停升级"
+                        IsEnabled="False" />
+                    <MenuItem
+                        Name="MenuItemStopUpdate"
+                        Click="MenuItemStopUpdate_OnClick"
+                        Header="停止升级"
+                        IsEnabled="False" />
+                    <Separator />
+                    <MenuItem
+                        Name="MenuItemReboot"
+                        Click="MenuItemReboot_OnClick"
+                        Header="重启设备" />
+                    <MenuItem
+                        Name="MenuItemStopDebug"
+                        Click="MenuItemStopDebug_OnClick"
+                        Header="停止远程诊断" />
+                    <MenuItem
+                        Name="MenuItemRemove"
+                        Click="MenuItemRemove_OnClick"
+                        Header="从列表中移除" />
+                </ContextMenu>
+            </DataGrid.ContextMenu>
+        </DataGrid>
+    </Grid>
+</Window>

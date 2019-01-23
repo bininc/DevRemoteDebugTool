@@ -1,0 +1,13 @@
+﻿<Window x:Class="WpfAutoUpdate.ParameterInfo"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ParameterInfo" Height="300" Width="350" ResizeMode="NoResize" WindowStartupLocation="CenterOwner">
+    <Grid>
+        <DataGrid Name="DataGridMain" AutoGenerateColumns="False" IsReadOnly="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="参数名" Binding="{Binding Key}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="参数值" Binding="{Binding Value}" IsReadOnly="True"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</Window>
