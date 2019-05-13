@@ -18,8 +18,22 @@ namespace WpfAutoUpdate
         private UpdateServer_2G _server_2G;
         private Thread thread;
         private byte[] pauseBytes;
+        private string _mac;
 
-        public string mac { get; private set; }
+        public string mac
+        {
+            get
+            {
+                return _mac;
+            }
+            private set
+            {
+                if (value != null)
+                    value = value.TrimStart('0');
+                if (value != _mac)
+                    _mac = value;
+            }
+        }
 
         public UpdateClient_2G(UpdateServer_2G server, Socket sok, MainWindow mainw)
         {

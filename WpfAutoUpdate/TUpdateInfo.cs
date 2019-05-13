@@ -14,7 +14,20 @@ namespace WpfAutoUpdate
         public event Action<TUpdateInfo> Removed;
 
         string _mac;
-        public string mac { get { return _mac; } set { _mac = value; OnPropertyChanged("mac"); } } //16	Text	车台MAC
+        public string mac
+        {
+            get { return _mac; }
+            set
+            {
+                if (value != null)
+                    value = value.TrimStart('0');
+                if (value != _mac)
+                {
+                    _mac = value;
+                    OnPropertyChanged("mac");
+                }
+            }
+        } //16	Text	车台MAC
         string _oldver;
         public string oldver { get { return _oldver; } set { _oldver = value; OnPropertyChanged("oldver"); } }
         string _ver;
