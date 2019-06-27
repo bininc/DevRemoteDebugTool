@@ -50,6 +50,8 @@ namespace WpfAutoUpdate
                             {
                                 ClientThread client = new ClientThread(this, sok, main);
                                 listClient.Add(client);
+                                TUpdateInfo info = new TUpdateInfo(client);
+                                main.dgUpdate.Dispatcher.Invoke(new Action(() => main.dgUpdateList.Add(info)));
                                 client.Start();
                             }
                             catch (Exception ex)

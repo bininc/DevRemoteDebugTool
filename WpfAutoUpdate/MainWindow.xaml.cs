@@ -395,14 +395,6 @@ namespace WpfAutoUpdate
                             string mac = str[0].Trim();
                             if (Regex.IsMatch(mac, @"^\d+$")) //确认是数字
                             {
-                                //string remark = null;
-                                //if (str.Count > 1)  //存在备注
-                                //    remark = str[1].Trim();
-                                //if (str.Count > 5)
-                                //{
-                                //    if (!string.IsNullOrWhiteSpace(str[5]))
-                                //        continue;
-                                //}
                                 this.txtUpdateCarMac.Text += mac + ";";
                                 dicUpdateMac.Add(mac, i);
                             }
@@ -461,10 +453,12 @@ namespace WpfAutoUpdate
                     try
                     {
                         WebClient wc = new WebClient();
-                        wc.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
-                        wc.Encoding = Encoding.GetEncoding("gb2312");
-                        string s = wc.DownloadString("http://2019.ip138.com/ic.asp");
-                        serverIP = Regex.Match(s, "<center>.*\\[(.+)\\].*</center>").Groups[1].Value;
+                        wc.Headers.Add("User-Agent", "Fiddler");
+                        wc.Headers.Add("Host", "ip.cn");
+                        wc.Encoding = Encoding.UTF8;
+
+                        string s = wc.DownloadString("https://ip.cn/");
+                        serverIP = Regex.Match(s, @"<code>(\d+\.\d+\.\d+\.\d+)</code>").Groups[1].Value;
                     }
                     catch (Exception ex)
                     {
@@ -701,10 +695,18 @@ namespace WpfAutoUpdate
             }
         }
 
-        private TUpdateInfo GetSelectedItem()
+        private TUpdateInfo GetSelectedItem(bool checkConn = true)
         {
             var cell = dgUpdate.CurrentCell;
             TUpdateInfo item = cell.Item as TUpdateInfo;
+            if (item != null)
+            {
+                if (checkConn && item.DevStatus == DevStatus.DisConnected)
+                {
+                    MessageBox.Show(this, "设备已断开远程调试，请重新连接设备后再进行操作！", "温馨提示", MessageBoxButton.OK, MessageBoxImage.Stop);
+                    item = null;
+                }
+            }
             return item;
         }
 
@@ -733,6 +735,7 @@ namespace WpfAutoUpdate
                 if (item.hasFeatures)
                 {
                     ParameterInfo pi = new ParameterInfo("配置信息-" + item.mac);
+                    pi.Owner = this;
                     pi.DicData = item.dicParameters;
                     pi.ShowDialog();
                 }
@@ -802,7 +805,9 @@ namespace WpfAutoUpdate
             TUpdateInfo item = GetSelectedItem();
             if (item != null)
             {
-                new SetParameters(item).ShowDialog();
+                var win = new SetParameters(item);
+                win.Owner = this;
+                win.ShowDialog();
             }
         }
 
@@ -879,7 +884,6 @@ namespace WpfAutoUpdate
                 {
                     if (item.PauseUpdate)
                     {
-                        item.PauseUpdate = false;
                         item.AutoUpdate = true;
                     }
                     else
@@ -895,6 +899,7 @@ namespace WpfAutoUpdate
                 }
 
                 item.AutoUpdate = true;
+                item.updatever = updateVer;
             }
         }
 
@@ -924,12 +929,13 @@ namespace WpfAutoUpdate
 
                 item.FoceUpdate = true;
                 item.AutoUpdate = true;
+                item.updatever = updateVer;
             }
         }
 
         private void MenuItemRemove_OnClick(object sender, RoutedEventArgs e)
         {
-            TUpdateInfo item = GetSelectedItem();
+            TUpdateInfo item = GetSelectedItem(false);
             if (item != null)
             {
                 item.Remove(true);

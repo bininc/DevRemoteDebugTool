@@ -151,7 +151,7 @@ namespace WpfAutoUpdate
 
                 _info.client.EnterSetMode(); //进入设置模式
                 _info.client.SendString(setStr); //设置参数
-                _info.lastCmd = "reboot";
+                _info.lastCmd = CmdId.SetPara;
                 this.DialogResult = true;
             }
         }

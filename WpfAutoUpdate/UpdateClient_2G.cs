@@ -74,8 +74,7 @@ namespace WpfAutoUpdate
             {
                 if (!string.IsNullOrWhiteSpace(mac))
                 {
-                    if (main.dgUpdateList.Any(x => x.mac == mac))
-                        return main.dgUpdateList.First(x => x.mac == mac);
+                    return main.dgUpdateList.FirstOrDefault(x => x.mac == mac);
                 }
                 return null;
             }
@@ -92,7 +91,7 @@ namespace WpfAutoUpdate
                     if (count == 0) //远程主机关闭了连接
                     {
                         client.Close();
-                        OnClientClosed("升级断开");
+                        OnClientClosed("下载断开");
                         return;
                     }
                     else
@@ -128,13 +127,13 @@ namespace WpfAutoUpdate
                                                             sameClient.thread.Abort();
                                                     }
                                                     catch { }
-                                                    sameClient.OnClientClosed("重复连接");
+                                                    sameClient.OnClientClosed(null);
                                                 }
 
                                                 if (updateInfo == null || !updateInfo.AutoUpdate || !updateInfo.needUpdate)
                                                 {
                                                     client.Close();
-                                                    OnClientClosed("");
+                                                    OnClientClosed(null);
                                                     return;
                                                 }
 
@@ -187,28 +186,24 @@ namespace WpfAutoUpdate
                                                     client.Send(rspBytes, nlen, SocketFlags.None);
 
                                                     if (main.ProgressMode == "P")
-                                                        updateInfo.status = string.Format("{1} ({0:P2})",
+                                                        updateInfo.sended = string.Format("{1} ({0:P2})",
                                                             rspOffset / main.fileStream.Length,
                                                             main.fileStream.Length - rspOffset);
                                                     else if (main.ProgressMode == "T")
-                                                        updateInfo.status = (main.fileStream.Length - rspOffset).ToString();
+                                                        updateInfo.sended = (main.fileStream.Length - rspOffset).ToString();
 
                                                     if (rspOffset >= main.fileStream.Length)
                                                     {
-                                                        updateInfo.down = "下载完成";
-                                                        updateInfo.time = null;
-                                                        updateInfo.Updated = true;
-                                                        //updateInfo.FoceUpdate = false;
-                                                        //updateInfo.IsUpdating = false;
+                                                        updateInfo.DevStatus = DevStatus.DownloadRomSuccess;
                                                     }
 
-                                                    updateInfo.lastUpSendTime = DateTime.Now;
+                                                    updateInfo.lastUpdSendTime = DateTime.Now;
 
                                                 }
                                                 else
                                                 {
-                                                    updateInfo.status = "版本不一致";
-                                                    updateInfo.time = "升级错误";
+                                                    updateInfo.sended = "版本不一致";
+                                                    updateInfo.DevStatus = DevStatus.DownloadRomError;
                                                 }
                                             }
                                         }
@@ -228,12 +223,12 @@ namespace WpfAutoUpdate
                                         if (updateInfo != null)
                                         {
                                             if (pauseBytes == null)
-                                                updateInfo.status = "...";
+                                                updateInfo.sended = "升级启动...";
                                             else
                                             {
                                                 client.Send(pauseBytes, SocketFlags.None);
                                             }
-                                            updateInfo.lastUpSendTime = DateTime.Now;
+                                            updateInfo.lastUpdSendTime = DateTime.Now;
                                         }
                                     }
                                     else
@@ -255,7 +250,7 @@ namespace WpfAutoUpdate
             {
                 if (ex is SocketException)
                 {
-                    OnClientClosed("升级断开");
+                    OnClientClosed("下载断开");
                 }
                 else
                 {
@@ -277,8 +272,8 @@ namespace WpfAutoUpdate
 
         private void OnClientClosed(string msg)
         {
-            if (updateInfo != null && !updateInfo.Updated)
-                updateInfo.status = msg;
+            if (updateInfo != null && msg != null)
+                updateInfo.sended = msg;
 
             if (ClientClosed != null)
                 ClientClosed(this);

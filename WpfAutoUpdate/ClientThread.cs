@@ -17,58 +17,26 @@ namespace WpfAutoUpdate
 {
     public class ClientThread
     {
-        public event Action<ClientThread> ClientClosed;
-        public event Action<string> MessageReceived;
+        public Action<ClientThread> ClientClosed;
+        public Action<string> MessageReceived;
 
-        public TUpdateInfo updateInfo { get; private set; }
-
-        private Socket _socket;
-        public Socket socket
+        public TUpdateInfo updateInfo
         {
-            get { return _socket; }
-            private set
+            get
             {
-                if (_socket == value) return;
-
-                if (_socket != null)
-                {
-                    _socket.Close();
-                }
-                _socket = value;
-                _socket.BeginReceive(_recBuffer, 0, _recBuffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback),
-    socket);
+                return main.dgUpdateList.FirstOrDefault(x => x.client == this);
             }
         }
+
+        public Socket socket { get; private set; }
         private const int _recBufferSize = 2048;
         public MainWindow main { get; private set; }
         private readonly ServerThread _serverThread;
-        /*
-        HW Ver: M50_VE03, SW Ver: SWVER130
-        NV Ver: UNI_STRONG,15:04:21 Jun 13 2015
-        VGAP: UNI-STRONG, IMEI: 863092013877025
-        GPRS APN:"ZY-DDN.BJ", UserName:"", Pwd:""
-        SERVER ADDR: 10.251.65.38:7956
-        VEID: 1423021432
-        */
-        readonly string StrCha = "*#00#";
-        readonly byte[] bufCha;
-        readonly string StrCha1 = "*#01#";
-        readonly byte[] bufCha1;
-        readonly string StrStop = "$DIAGSTOP";
-        readonly byte[] bufStop;
+
         byte[] bufUpdate;
-        readonly string StrUpStop = "**42#"; //停止升级
-        readonly byte[] bufUpStop;
-        readonly string StrReboot = "**00#";
-        readonly byte[] bufReboot;
-        private readonly string StrState2 = "*state=2"; //编辑模式
-        private readonly byte[] bufState2;
-        private readonly string StrState0 = "*state=0"; //正常模式
-        private readonly byte[] bufState0;
 
         public string mac { get; private set; }
         public readonly DateTime ConnTime;
-        private DateTime lastGetParaTime;
         private DateTime lastUpRecTime;
         private DateTime lastRecTime;
         private StringBuilder sb = new StringBuilder();
@@ -77,17 +45,10 @@ namespace WpfAutoUpdate
 
         public ClientThread(ServerThread server, Socket sok, MainWindow mainw)
         {
-            bufCha = Encoding.ASCII.GetBytes(StrCha);
-            bufCha1 = Encoding.ASCII.GetBytes(StrCha1);
-            bufStop = Encoding.ASCII.GetBytes(StrStop);
-            bufUpStop = Encoding.ASCII.GetBytes(StrUpStop);
-            bufReboot = Encoding.ASCII.GetBytes(StrReboot);
-            bufState2 = Encoding.ASCII.GetBytes(StrState2);
-            bufState0 = Encoding.ASCII.GetBytes(StrState0);
             _recBuffer = new byte[_recBufferSize];
             _serverThread = server;
-            _socket = sok;
-            _socket.ReceiveBufferSize = _recBufferSize;
+            socket = sok;
+            socket.ReceiveBufferSize = _recBufferSize;
             main = mainw;
             ConnTime = DateTime.Now;
         }
@@ -95,19 +56,16 @@ namespace WpfAutoUpdate
         ~ClientThread()
         {
             _timer?.Dispose();
+            CloseSocket();
         }
         public void Start()
         {
-            updateInfo = new TUpdateInfo(this);
-            main.dgUpdate.Dispatcher.Invoke(new Action(() => main.dgUpdateList.Add(updateInfo)));
-
-            socket.BeginReceive(_recBuffer, 0, _recBuffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback),
-                socket);
+            ReceiveNextData(socket);
 
             lastRecTime = DateTime.Now;
             _timer = new Timer(state =>
             {
-
+                if (updateInfo == null) return;
                 if ((DateTime.Now - lastRecTime).TotalSeconds >= 180)
                 {
                     if (string.IsNullOrWhiteSpace(updateInfo.mac))
@@ -116,17 +74,16 @@ namespace WpfAutoUpdate
                     }
                     else
                     {
-                        updateInfo.status = "连接超时";
+                        updateInfo.DevStatus = DevStatus.TimeOut;
                     }
                 }
                 else
                 {
-                    if (updateInfo.status == "连接超时")
-                        updateInfo.status = "已连接";
+                    if (updateInfo.DevStatus == DevStatus.TimeOut)
+                        updateInfo.DevStatus = DevStatus.ReConnect;
                 }
             }, null, 1000, 1000);
 
-            updateInfo.status = "识别连接...";
             GetParameters();
         }
 
@@ -142,11 +99,29 @@ namespace WpfAutoUpdate
                 _serverThread.listClient.Remove(this);
         }
 
+        private void ReceiveNextData(Socket sok)
+        {
+            if (sok == null) return;
+            try
+            {
+                if (sok.Connected)
+                    sok.BeginReceive(_recBuffer, 0, _recBuffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), sok);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("recError:" + ex.Message);
+                OnClientClosed("连接中断");
+                updateInfo.Remove(true); //移除自己
+            }
+        }
+
         private void ReceiveCallback(IAsyncResult result)
         {
             Socket sok = (Socket)result.AsyncState;
             try
             {
+                if (!sok.Connected) return;
+
                 int len = sok.EndReceive(result);
                 result.AsyncWaitHandle.Close();
 
@@ -157,25 +132,18 @@ namespace WpfAutoUpdate
                     return;
                 }
 
+                if (updateInfo.DevStatus == DevStatus.DisConnected)
+                    updateInfo.DevStatus = DevStatus.ReConnect;
+
                 string str = Encoding.GetEncoding("GB2312").GetString(_recBuffer, 0, len);
                 lastRecTime = DateTime.Now;
-                Match mc00 = Match.Empty;
 
                 if (!string.IsNullOrEmpty(str))
                 {
                     //Debug.Write($"rec({len}):{str}");
                     MessageReceived?.BeginInvoke(str, null, null); //调用接收到消息事件
 
-                    if (string.IsNullOrEmpty(updateInfo.lastCmd))
-                    {
-                        mc00 = Regex.Match(str, @"upd|download", RegexOptions.IgnoreCase);
-                        if (mc00.Success)
-                        {
-                            updateInfo.lastCmd = "update";
-                        }
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(updateInfo.lastCmd))
+                    if (updateInfo.lastCmd != CmdId.NULL)
                         sb.Append(str); //附加接收到的数据
                     else
                        if (sb.Length > 0) sb.Clear();
@@ -183,8 +151,9 @@ namespace WpfAutoUpdate
                     if (sb.Length > 0)
                     {
                         string sbStr = sb.ToString();
+                        Match mc00 = Match.Empty;
 
-                        if ((string.IsNullOrEmpty(mac) || updateInfo.lastCmd == "readP"))
+                        if (string.IsNullOrEmpty(mac) || updateInfo.lastCmd == CmdId.ReadPara)
                         {
                             #region 识别设备
                             bool nd = (sbStr.IndexOf("Features", StringComparison.OrdinalIgnoreCase) > 0 &&
@@ -196,21 +165,14 @@ namespace WpfAutoUpdate
                                 mc00 = Regex.Match(sbStr, @"-+\s*Features\s*-+\n+(.+)\n+-+\s*Parameters\s*-+\n+(.+)\n+-+\s*Supervisor\s*numbers\s*-+\n+(.+)\n+-+\s*End\s*-+", RegexOptions.Singleline | RegexOptions.IgnoreCase);
                             if (!mc00.Success)
                             {
-                                if ((DateTime.Now - lastGetParaTime).TotalSeconds > 5)
-                                {   //超过5秒重新查询
+                                if (GetParameters())
+                                {
                                     sb.Clear();
-                                    GetParameters();
                                 }
                             }
                             else
                             {
-                                updateInfo.lastCmd = null;
                                 sb.Clear();
-
-                                if (!string.IsNullOrEmpty(mac))
-                                {
-                                    updateInfo.down = "读取配置信息成功";
-                                }
 
                                 string parameters = mc00.Groups[2].Value;
                                 Dictionary<string, string> dicParameters = GetDictionaryFromParameters(parameters);
@@ -221,25 +183,20 @@ namespace WpfAutoUpdate
 
                                 if (string.IsNullOrWhiteSpace(mac))
                                 {
+                                    updateInfo.SetCmdResult(CmdId.ReadPara, false);
                                     //未提取到识别码 继续查找识别码
-                                    sb.Clear();
                                     GetParameters();
                                 }
                                 else
                                 {
-                                    if (dicParameters.ContainsKey("VGAP") && dicParameters["VGAP"].IndexOf("BUBIAO", StringComparison.OrdinalIgnoreCase) >= 0)
-                                    {
-                                        mac = mac.PadLeft(12, '0');
-                                    }
+                                    updateInfo.SetCmdResult(CmdId.ReadPara, true);
                                     if (string.IsNullOrWhiteSpace(updateInfo.mac))
                                     {
                                         //当前连接未识别
-                                        TUpdateInfo oldInfo = main.dgUpdateList.FirstOrDefault(x => x.mac == mac && x != updateInfo);
+                                        TUpdateInfo oldInfo = main.dgUpdateList.FirstOrDefault(x => x.mac == mac);
                                         if (oldInfo != null)
                                         {
-                                            //激活历史相同客户端
-                                            oldInfo.client.socket = socket;
-                                            oldInfo.ip_port = socket?.RemoteEndPoint.ToString();
+                                            //激活历史相同客户端                                                                                       
                                             oldInfo.features = mc00.Groups[1].Value;
                                             oldInfo.parameters = parameters;
                                             oldInfo.dicParameters = dicParameters;
@@ -251,28 +208,26 @@ namespace WpfAutoUpdate
                                                 oldInfo.ver = cver; //当前版本
                                             }
 
-                                            if (oldInfo.lastCmd == "reboot")
+                                            if (oldInfo.lastCmd == CmdId.Reboot)
                                             {
-                                                oldInfo.lastCmd = null;
-                                                oldInfo.down = "重启完成";
-                                                oldInfo.status = "已连接";
-                                            }
-                                            else if (oldInfo.down == "刷写Flash")
-                                            {
-                                                oldInfo.status = "重新连接";
-                                                oldInfo.down = "升级成功";
-                                                oldInfo.time = DateTimeHelper.DateTimeNowStr;
-                                                if (main.AutoStop)
-                                                    oldInfo.client.StopDebug();
+                                                oldInfo.SetCmdResult(CmdId.Reboot, true);
                                             }
                                             else
                                             {
-                                                oldInfo.status = "重新连接";
-                                                oldInfo.down = "-";
+                                                //oldInfo.down = "-";
+                                            }
+                                            if (oldInfo.DevStatus != DevStatus.FlashRom)
+                                                oldInfo.DevStatus = DevStatus.ReConnect;
+                                            else
+                                            {
+                                                if (oldInfo.FoceUpdate)
+                                                    oldInfo.FoceUpdate = false;
                                             }
 
+                                            oldInfo.client.Stop(); //移除旧连接
                                             updateInfo.Remove(); //移除自己
-                                            Stop(true); //移除当前客户端
+                                            oldInfo.client = this; //将新连接赋值给已存在信息
+                                            ReceiveNextData(sok);
                                             return;
                                         }
                                     }
@@ -292,16 +247,15 @@ namespace WpfAutoUpdate
                                             updateInfo.oldver = cver; //旧版本为空 也赋值为当前版本
                                     }
 
-                                    if (updateInfo.status == "识别连接...")
+                                    if (updateInfo.DevStatus == DevStatus.UnKnown)
                                     {
-                                        updateInfo.status = "已连接";
-                                        updateInfo.down = "";
+                                        updateInfo.DevStatus = DevStatus.Connect;
                                     }
                                 }
                             }
                             #endregion
                         }
-                        else if (updateInfo.lastCmd == "readDP" &&
+                        else if (updateInfo.lastCmd == CmdId.ReadDynamicPara &&
                             sbStr.IndexOf("Dynamic", StringComparison.OrdinalIgnoreCase) > 0 &&
                             sbStr.IndexOf("parameters", StringComparison.OrdinalIgnoreCase) > 0)
                         {   //读取动态参数
@@ -310,20 +264,19 @@ namespace WpfAutoUpdate
                             {
                                 sb.Clear();
                                 updateInfo.dynamicParameters = mc00.Groups[1].ToString();
-                                updateInfo.lastCmd = null;
-                                updateInfo.down = "读取动态参数成功";
+                                updateInfo.SetCmdResult(CmdId.ReadDynamicPara, true);
                             }
                         }
-                        else if (updateInfo.lastCmd == "reboot")
+                        else if (updateInfo.lastCmd == CmdId.Reboot)
                         {   //重启指令
                             mc00 = Regex.Match(sbStr, @"Rebooting|Reboot", RegexOptions.IgnoreCase);
                             if (mc00.Success)
                             {
                                 sb.Clear();
-                                updateInfo.status = "重启中";
+                                updateInfo.DevStatus = DevStatus.Rebooting;
                             }
                         }
-                        else if (updateInfo.lastCmd == "update")
+                        else if (updateInfo.lastCmd == CmdId.StartUpdate || updateInfo.lastCmd == CmdId.ContinueUpdate)
                         {
                             sb.Clear();
                             string[] lines = sbStr.Split('\n');
@@ -333,51 +286,54 @@ namespace WpfAutoUpdate
                                 string line = lines[i];
                                 if (string.IsNullOrEmpty(line)) continue;
 
-                                if ((index = line.IndexOf("start_download", StringComparison.CurrentCultureIgnoreCase)) >= 0)
+                                if ((index = line.IndexOf("start_download", StringComparison.OrdinalIgnoreCase)) >= 0)
                                 {
-                                    updateInfo.down = "开始下载固件";
+                                    updateInfo.DevStatus = DevStatus.StartDownloadRom;
                                 }
-                                else if ((index = line.LastIndexOf("download:", StringComparison.CurrentCultureIgnoreCase)) >= 0)
+                                else if ((index = line.LastIndexOf("download:", StringComparison.OrdinalIgnoreCase)) >= 0)
                                 {
+                                    updateInfo.DevStatus = DevStatus.DownloadingRom;
                                     line = line.Substring(index);
                                     mc00 = Regex.Match(line, @"download:\s*((\d+)\s*\(.+\))", RegexOptions.IgnoreCase); //UPD download: 119808 (57.55%)
                                     if (mc00.Success)
                                     {
-                                        if (!isStopUp && !updateInfo.PauseUpdate)
+                                        string down = null;
+                                        if (main.ProgressMode == "P")
                                         {
-                                            if (main.ProgressMode == "P")
-                                            {
-                                                string down = mc00.Groups[1].Value;
-                                                if (updateInfo.down != down)
-                                                    lastUpRecTime = DateTime.Now;
-                                                updateInfo.down = down;
-                                            }
-                                            else if (main.ProgressMode == "T")
-                                            {
-                                                string down = mc00.Groups[2].Value;
-                                                if (updateInfo.down != down)
-                                                    lastUpRecTime = DateTime.Now;
-                                                updateInfo.down = down;
-                                            }
-
-                                            if (!updateInfo.IsUpdating)
-                                                updateInfo.IsUpdating = true;
-                                            if (!updateInfo.AutoUpdate)
-                                                updateInfo.AutoUpdate = true;
-
-                                            if (updateInfo.needUpdate)
-                                            {
-                                                updateInfo.time = "升级中...";
-                                            }
+                                            down = mc00.Groups[1].Value;
                                         }
+                                        else if (main.ProgressMode == "T")
+                                        {
+                                            down = mc00.Groups[2].Value;
+                                        }
+                                        if (updateInfo.down != down)
+                                            lastUpRecTime = DateTime.Now;
+                                        updateInfo.down = down;
+
+                                        if (!updateInfo.IsUpdating)
+                                            updateInfo.IsUpdating = true;
+
+                                        updateInfo.time = "升级中...";
                                     }
+
                                 }
                                 else if (line.Contains("image") && line.Contains("success") && line.Contains("real") && line.Contains("update"))//11,H,upd_dl.c,289,upd_dlack_handler,Download image successful, delay do real update
                                 {
-                                    updateInfo.down = "刷写Flash";
-                                    updateInfo.status = "下载完成";
-                                    if (updateInfo.FoceUpdate)
-                                        updateInfo.FoceUpdate = false;
+                                    string down = null;
+                                    if (main.ProgressMode == "P")
+                                    {
+                                        down = main.fileStream.Length + " (100%)";
+                                    }
+                                    else if (main.ProgressMode == "T")
+                                    {
+                                        down = main.fileStream.Length.ToString();
+                                    }
+
+                                    if (updateInfo.down != down)
+                                        lastUpRecTime = DateTime.Now;
+                                    updateInfo.down = down;
+
+                                    updateInfo.DevStatus = DevStatus.FlashRom;
                                 }
                                 else if (line.Contains("upd_task") && line.Contains("download") && line.Contains("timeout"))
                                 {
@@ -391,14 +347,40 @@ namespace WpfAutoUpdate
                             }
 
                         }
-                        else
+                        else if (updateInfo.lastCmd == CmdId.SetPara)
                         {
-
+                            sb.Clear();
+                            mc00 = Regex.Match(sbStr, "!!!.+!!!", RegexOptions.IgnoreCase);
+                            if (mc00.Success)
+                            {
+                                updateInfo.SetCmdResult(CmdId.SetPara, false);
+                            }
+                            else
+                            {
+                                mc00 = Regex.Match(sbStr, "reboot", RegexOptions.IgnoreCase);
+                                if (mc00.Success)
+                                {
+                                    updateInfo.SetCmdResult(CmdId.SetPara, true);
+                                    updateInfo.DevStatus = DevStatus.Rebooting;
+                                }
+                            }
+                        }
+                        else if (updateInfo.lastCmd == CmdId.StopUpdate)
+                        {
+                            sb.Clear();
+                            mc00 = Regex.Match(sbStr, "lmt_stop_update", RegexOptions.IgnoreCase);
+                            if (mc00.Success)
+                            {
+                                updateInfo.time = DateTime.Now.ToFormatDateTimeStr();
+                                updateInfo.DevStatus = DevStatus.StopUpdate;
+                                updateInfo.SetCmdResult(CmdId.StopUpdate, true);
+                            }
                         }
                     }
 
-                    CheckUpdate();  //每次检查更新
+                    CheckUpdate(str);  //每次检查更新
                     CheckErrorLink();   //检查错误连接
+                    CheckCmdExecState();
                 }
             }
             catch (Exception e)
@@ -421,24 +403,22 @@ namespace WpfAutoUpdate
                 else
                     Debug.WriteLine(e.Message);
             }
-            try
-            {
-                sok.BeginReceive(_recBuffer, 0, _recBuffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), sok);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine("recError:" + ex.Message);
-                OnClientClosed("连接中断");
-                updateInfo.Remove(true); //移除自己
-            }
+
+            ReceiveNextData(sok);
         }
 
         private void OnClientClosed(string msg)
         {
             if (!string.IsNullOrWhiteSpace(updateInfo?.mac))
             {
-                if (!string.IsNullOrWhiteSpace(msg) && !updateInfo.Updated)
+                if (!string.IsNullOrWhiteSpace(msg))
+                {
+                    updateInfo.DevStatus = DevStatus.DisConnected;
                     updateInfo.status = msg;
+
+                    if (updateInfo.lastCmd == CmdId.StopDebug)
+                        updateInfo.SetCmdResult(CmdId.StopDebug, true);
+                }
 
                 main.SaveExcel(updateInfo); //保存到Excel
             }
@@ -486,65 +466,90 @@ namespace WpfAutoUpdate
             return dicParameters;
         }
 
-        private void CheckUpdate()
+        private void CheckUpdate(string readStr = null)
         {
             if (string.IsNullOrWhiteSpace(updateInfo?.mac)) return;
 
-            if (!updateInfo.AutoUpdate && main.dicUpdateMac.ContainsKey(updateInfo.mac))
-                updateInfo.AutoUpdate = true;
-
-            if (main.StartUpdate)
-                updateInfo.updatever = main.updateVer;
-
             if (!main.StartUpdate) return;
 
-            if (!updateInfo.needUpdate && updateInfo.AutoUpdate && !updateInfo.Updated)
+            if (updateInfo.lastCmd == CmdId.NULL && updateInfo.DevStatus == DevStatus.Connect)
             {
-                if (string.IsNullOrWhiteSpace(updateInfo.time))
+                Match mc00 = Regex.Match(readStr, @"upd|download", RegexOptions.IgnoreCase);
+                if (mc00.Success)
                 {
+                    updateInfo.AutoUpdate = true;
+                    updateInfo.IsUpdating = true;
+                    updateInfo.updatever = main.updateVer;
+                    if (updateInfo.updatever != updateInfo.ver) //跳过版本号相同的情况
+                        updateInfo.lastCmd = CmdId.ContinueUpdate;
+                }
+            }
+
+            if (!updateInfo.AutoUpdate)
+            {
+                if (updateInfo.IsUpdating)
+                {
+                    updateInfo.IsUpdating = false;
+                    StopUpdate();
+                }
+                return;
+            }
+
+            if (!updateInfo.needUpdate)
+            {   //检测到版本号一致，无需升级
+                if (updateInfo.lastCmd != CmdId.StartUpdate && updateInfo.lastCmd != CmdId.ContinueUpdate)
+                {
+                    updateInfo.sended = "无需升级";
+
                     if (updateInfo.IsUpdating)
                         StopUpdate();
 
-                    updateInfo.down = "无需升级";
-                    updateInfo.time = DateTimeHelper.DateTimeNowStr;
-                    updateInfo.lastCmd = null;
                     updateInfo.AutoUpdate = false;
+
                     if (main.AutoStop)
                         StopDebug();
                 }
-            }
-            else if (updateInfo.needUpdate && updateInfo.IsUpdating && updateInfo.Updated)
-            {
-                if (string.IsNullOrWhiteSpace(updateInfo.time) || updateInfo.time == "升级中...")
-                {
-                    if (updateInfo.FoceUpdate)
-                    {
-                        updateInfo.FoceUpdate = false;
-                    }
+                else
+                {   //固件下载完成
+                    if (updateInfo.DevStatus == DevStatus.FlashRom)
+                    { //固件刷写完成
+                        if (updateInfo.lastCmd == CmdId.StartUpdate)
+                            updateInfo.SetCmdResult(CmdId.StartUpdate, true);
+                        else if (updateInfo.lastCmd == CmdId.ContinueUpdate)
+                            updateInfo.SetCmdResult(CmdId.ContinueUpdate, true);
 
-                    updateInfo.IsUpdating = false;
-                    //updateInfo.down = "已升级";
-                    //updateInfo.status = "升级成功";
-                    updateInfo.lastCmd = null;
+                        updateInfo.time = DateTimeHelper.DateTimeNowStr;
+                        updateInfo.DevStatus = DevStatus.UpdateSuccess;
+                        updateInfo.IsUpdating = false;
+                        updateInfo.AutoUpdate = false;
+                        if (main.AutoStop)
+                            StopDebug();
+                    }
                 }
             }
             else
             {
-                if (updateInfo.needUpdate && updateInfo.AutoUpdate)
-                {
-                    if (!updateInfo.IsUpdating && !updateInfo.Updated && !updateInfo.PauseUpdate)
-                        StartUpdate();
-                }
+                if (updateInfo.lastCmd != CmdId.StartUpdate && updateInfo.lastCmd != CmdId.ContinueUpdate && updateInfo.lastCmd != CmdId.PauseUpdate)
+                    StartUpdate();
             }
         }
 
         private void CheckErrorLink()
         {
-            if (lastUpRecTime == default(DateTime) || updateInfo.lastUpSendTime == default(DateTime)) return;
-            if (!string.IsNullOrWhiteSpace(updateInfo?.mac) && updateInfo.IsUpdating && !updateInfo.PauseUpdate)
+            if (string.IsNullOrWhiteSpace(updateInfo?.mac)) return;
+            if (lastUpRecTime == default(DateTime) || updateInfo.lastUpdSendTime == default(DateTime)) return;
+            if (!updateInfo.AutoUpdate) return;
+
+            if (updateInfo.PauseUpdate)
+            {
+                updateInfo.lastUpdSendTime = DateTime.Now;
+                return;
+            }
+
+            if (updateInfo.DevStatus == DevStatus.StartDownloadRom || updateInfo.DevStatus == DevStatus.DownloadingRom)
             {
                 double lastDualSec = (DateTime.Now - lastUpRecTime).TotalSeconds;
-                double lastSendDualSec = (DateTime.Now - updateInfo.lastUpSendTime).TotalSeconds;
+                double lastSendDualSec = (DateTime.Now - updateInfo.lastUpdSendTime).TotalSeconds;
                 if (lastDualSec >= 40) //距离上次接收更新数据超过40秒
                 {
                     if (lastDualSec > 180) //距离上次接收到更新数据超过180秒
@@ -558,37 +563,48 @@ namespace WpfAutoUpdate
                         }
                     }
 
-                    if (!updateInfo.Updated && lastSendDualSec >= 60)
+                    if (lastSendDualSec >= 60)
                         StartUpdate();
                 }
             }
-            if (updateInfo.PauseUpdate)
-                updateInfo.lastUpSendTime = DateTime.Now;
+
+        }
+
+
+        private void CheckCmdExecState()
+        {
+            foreach (var item in updateInfo._cmdExecTime.ToArray())
+            {
+                if ((DateTime.Now - item.Value).TotalSeconds > 60)
+                {   //超过60秒 命令没有反馈 判定为超时
+                    updateInfo.SetCmdResult(item.Key, false);
+                }
+            }
         }
 
         /// <summary>
-        /// 查询配置参数
+        /// 查询终端信息
         /// </summary>
-        public void GetParameters()
+        public bool GetParameters()
         {
-            if ((DateTime.Now - lastGetParaTime).TotalSeconds < 5) return;
+            if (updateInfo._cmdExecTime.ContainsKey(CmdId.ReadPara))
+                if ((DateTime.Now - updateInfo._cmdExecTime[CmdId.ReadPara]).TotalSeconds < 5) return false;
             try
             {
                 if (socket != null)
                 {
-                    socket.Send(bufCha);
-                    lastGetParaTime = DateTime.Now;
-                    Debug.WriteLine("GetParameters");
+                    socket.Send(CmdInfo.GetCmdBytes(CmdId.ReadPara));
                     if (updateInfo != null)
                     {
-                        updateInfo.down = "读取配置信息...";
-                        updateInfo.lastCmd = "readP";
+                        updateInfo.lastCmd = CmdId.ReadPara;
                     }
+                    return true;
                 }
             }
             catch
             {
             }
+            return false;
         }
 
         /// <summary>
@@ -600,11 +616,10 @@ namespace WpfAutoUpdate
             {
                 if (socket != null)
                 {
-                    socket.Send(bufCha1);
+                    socket.Send(CmdInfo.GetCmdBytes(CmdId.ReadDynamicPara));
                     if (updateInfo != null)
                     {
-                        updateInfo.down = "读取动态参数...";
-                        updateInfo.lastCmd = "readDP";
+                        updateInfo.lastCmd = CmdId.ReadDynamicPara;
                     }
                 }
             }
@@ -613,7 +628,6 @@ namespace WpfAutoUpdate
             }
         }
 
-        private bool isStopUp = false;
 
         /// <summary>
         /// 开始升级
@@ -635,11 +649,8 @@ namespace WpfAutoUpdate
                 if (socket != null && bufUpdate != null)
                 {
                     socket.Send(bufUpdate);
-                    isStopUp = false;
-                    updateInfo.IsUpdating = true;
-                    updateInfo.lastUpSendTime = DateTime.Now;
-                    updateInfo.down = "开始升级";
-                    updateInfo.lastCmd = "update";
+                    updateInfo.lastUpdSendTime = DateTime.Now;
+                    updateInfo.lastCmd = CmdId.StartUpdate;
                 }
             }
             catch
@@ -657,13 +668,10 @@ namespace WpfAutoUpdate
             {
                 if (socket != null)
                 {
-                    socket.Send(bufUpStop);
-                    isStopUp = true;
+                    socket.Send(CmdInfo.GetCmdBytes(CmdId.StopUpdate));
                     if (updateInfo != null)
                     {
-                        updateInfo.IsUpdating = false;
-                        updateInfo.down = "停止升级";
-                        updateInfo.lastCmd = null;
+                        updateInfo.lastCmd = CmdId.StopUpdate;
                     }
                 }
             }
@@ -681,12 +689,11 @@ namespace WpfAutoUpdate
             {
                 if (socket != null)
                 {
-                    socket.Send(bufState2);
-                    socket.Send(bufReboot);
+                    socket.Send(CmdInfo.GetCmdBytes(CmdId.State2));
+                    socket.Send(CmdInfo.GetCmdBytes(CmdId.Reboot));
                     if (updateInfo != null)
                     {
-                        updateInfo.down = "重启设备...";
-                        updateInfo.lastCmd = "reboot";
+                        updateInfo.lastCmd = CmdId.Reboot;
                     }
                 }
             }
@@ -705,10 +712,10 @@ namespace WpfAutoUpdate
             {
                 if (socket != null)
                 {
-                    socket.Send(bufStop);
+                    socket.Send(CmdInfo.GetCmdBytes(CmdId.StopDebug));
                     if (updateInfo != null)
                     {
-                        updateInfo.down = "停止远程诊断";
+                        updateInfo.lastCmd = CmdId.StopDebug;
                     }
                 }
             }
@@ -737,7 +744,7 @@ namespace WpfAutoUpdate
             try
             {
                 if (socket != null)
-                    socket.Send(bufState2);
+                    socket.Send(CmdInfo.GetCmdBytes(CmdId.State2));
             }
             catch
             {
@@ -751,7 +758,7 @@ namespace WpfAutoUpdate
         {
             try
             {
-                socket?.Send(bufState0);
+                socket?.Send(CmdInfo.GetCmdBytes(CmdId.State0));
             }
             catch
             {
@@ -778,4 +785,6 @@ namespace WpfAutoUpdate
             }
         }
     }
+
+
 }
